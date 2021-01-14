@@ -1,0 +1,131 @@
+---
+title: "Hotel Booking Demand"
+author: "Hatim Ali, Pavel Raschetnov"
+date: "1/14/2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Hotel booking demand dataset
+
+This data set contains booking information for a city hotel and a resort hotel, and includes information such as when the booking was made, length of stay, the number of adults, children, and/or babies, and the number of available parking spaces, among other things.
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details you can visit <https://www.kaggle.com/jessemostipak/hotel-booking-demand>.
+
+#### Importing libraries
+```{r}
+library(tidyverse)
+```
+### View Basic Attributes of Data
+
+#### 1. View first 5 rows of data
+
+```{r hotel_bookings}
+hotel_bookings = read.csv("hotel_bookings.csv")
+head(hotel_bookings)
+```
+#### 2. How many rows of data and how many variables?
+
+```{r}
+variables <- ncol(hotel_bookings)
+rows <- nrow(hotel_bookings)
+```
+There are 32 variables with 119390 rows in this dataset. It looks like there are a lot of categorical variables in this dataset mixed with dates as well. An interesting metric they keep track of is number of special requests. Who knew hotels/resorts kept track of such things.
+
+#### 3. What is the data range for reservations?
+
+```{r}
+min_res_date <- min(hotel_bookings$reservation_status_date)
+max_res_date <- max(hotel_bookings$reservation_status_date)
+```
+It appears that this data spans from 2014-10-17 to 2017-09-14.
+
+#### 4. Data type of each columns?
+
+```{r}
+glimpse(hotel_bookings)
+```
+
+### Data Wrangling
+#### Dropping the columns with missing values.
+```{r}
+drop <- c("company","agent")
+hotel_bookings = hotel_bookings[,!(names(hotel_bookings) %in% drop)]
+```
+#### Adding canceled as a categorical variable
+```{r}
+hotel_bookings$canceled <- hotel_bookings$is_canceled == 1
+```
+
+### Data Visualizations (EDA):
+Lets explore the data with a couple of visualizations that will answer some interesting questions.
+
+#### 1. What is the percentage of cancelled booking of each type of hotels?
+```{r}
+hotel_bookings %>% 
+  ggplot(aes(x= hotel, fill=canceled))+
+  theme_set(theme_light()) +
+  geom_bar(alpha=0.8, position = "dodge", width=0.5)+
+  labs(title= "No. of cancelations with each hotel type", x= "Hotel Type", y="No. of Cancelations", fill="Canceled") + scale_fill_discrete(name = "is_canceled", labels = c("confirmed", "canceled")) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5), axis.text.x = element_text(vjust=.5))
+
+```
+
+#### 2. Distribution of the cancelation during different months of the year.
+
+```{r}
+ggplot(hotel_bookings, aes(x = arrival_date_month, fill = canceled)) + geom_bar(position = "dodge", alpha=0.8) +
+  scale_x_discrete(limits= month.name) +
+  theme_set(theme_light()) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5), axis.text.x = element_text(angle=90, vjust=.9)) + scale_fill_discrete(name = "is_canceled", labels = c("confirmed", "canceled")) +
+  labs(title= "Cancelation in different months of the year", x='Reservation Month', y='Frequency') +
+  facet_wrap(~hotel)
+
+```
+
+
+#### 3. The market segments and cancelations
+```{r}
+hotel_bookings$canceled <- hotel_bookings$is_canceled == 1
+hotel_bookings %>% 
+  ggplot(aes(x = market_segment, fill = canceled)) + 
+  theme_set(theme_light()) +
+  geom_bar(position = "dodge") +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5), axis.text.x = element_text(angle=90, vjust=.5)) + scale_fill_discrete(name = "is_canceled", labels = c("confirmed", "canceled")) +
+  labs(title= "The market segments and cancelations", x='Market Segment', y='Count')
+  
+```
+
+#### 4. Analyzing canceled booking based on deposit_type.
+```{r}
+ggplot(hotel_bookings, aes(x = deposit_type, fill=canceled)) + geom_bar(position = "dodge", width=0.5) +
+  theme_light() + scale_fill_discrete(name = "is_canceled", labels = c("confirmed", "canceled"))
+```
+
+#### 5.Visualisation of lead_time.
+```{r}
+options(dplyr.summarise.inform = FALSE)
+subset <- hotel_bookings  %>% 
+  mutate(lead_time_binned=round(lead_time / 20) * 20)  %>% 
+  group_by(lead_time_binned)  %>% 
+  summarise(cancellation_rate=mean(is_canceled)) %>% 
+  select(lead_time_binned, cancellation_rate)
+
+ggplot(data= subset) + 
+  geom_point(aes(x=lead_time_binned, y=cancellation_rate, color='#eb5505'), show.legend = FALSE) +
+  xlab('Lead time') + ylab('Cancellation rate') +
+  labs(title= "Relations b/w lead_time mean and cancelation ratio")
+
+```
+
+
+
+
+
+
+
